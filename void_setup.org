@@ -1,0 +1,332 @@
+#+TITLE:Setup Void with DWM
+
+This began life as a script to run directly after the installation of Void using the TUI installer. As of <2026-01-10 Sat>, this is a sketch for a new system on Void mainly using DWM and EXWM with XFCE installed just for laughs.
+
+[Not sure how to execute sudo in org files; just tangle it.]
+
+* Basic installation
+
+Run this just after installing Void usig the TUI installer. Then use Emacs to setup the rest!
+
+#+begin_src shell :tangle void_setup.sh :dir "/sudo::" :results silent
+xbps-install -u xbps
+xbps-install -Suv
+xbps-install void-repo-nonfree neovim engrampa zip unzip emacs-gtk3 xmodmap git
+xbps-install -Suv
+xbps-install dropbox
+dropbox start
+#+end_src
+
+#+begin_src shell :tangle void_setup.sh :results silent
+dropbox start
+#+end_src
+
+* Remap caps lock
+
+#+begin_src bash :tangle void_setup.sh :results silent
+# Now enable xmodmap
+cat << EOF > ~/modmap
+       !
+       ! Swap Caps_Lock and Control_L
+       !
+       remove Lock = Caps_Lock
+       remove Control = Control_L
+       keysym Control_L = Caps_Lock
+       keysym Caps_Lock = Control_L
+       add Lock = Caps_Lock
+       add Control = Control_L
+EOF
+
+echo "Content has been written to ~/modmap."
+#+end_src
+
+* Second stage of packages to install
+
+#+begin_src shell :tangle void_setup.sh :dir "/sudo::" :results silent
+# Now install further basic applications
+# While this is running, start updating emacs
+
+sudo xbps-install arandr aspell-en autoconf automake autorandr bison blueman dmenu fakeroot feh flex gcc gedit gimp git gpart gparted ibus ibus-m17n libreoffice lxappearance lxinput lyx m4 make mariadb network-manager-applet NetworkManager ntfs-3g okular p7zip pandoc patch pavucontrol pkgconf pdftk python-pip qbittorrent ripgrep rofi rsync rtorrent shotcut sudo texinfo texlive-bin Thunar thunar-volman timeshift unrar usbutils viewnior vim vlc wireless_tools wpa_supplicant polybar gvfs wmctrl git mu offlineimap cinnamon curl xinput picom
+#+end_src
+
+#+begin_src sh :tangle void_setup_src.sh :results silent
+# Now set up void packages
+
+echo "Setting up void packages in home directory..."
+cd ~/
+git clone https://github.com/void-linux/void-packages.git
+cd void-packages
+./xbps-src binary-bootstrap
+#+end_src
+
+* Librewolf
+
+See here for installation instructions on Void: https://github.com/index-0/librewolf-void.
+
+* Texlive
+
+#+begin_src :tangle void_setup.sh :dir "/sudo::" :results silent
+sudo xbps-install -Suv texlive-full
+#+end_src
+
+* Emacs
+
+The following will start the Nyaya-Emacs config:
+
+#+begin_src elisp :tangle ~/.emacs
+(load "/home/michael/Dropbox/Main_Config/Main_Emacs/nyaya-emacs.el")
+#+end_src
+
+* Dropbox Exclusions
+
+Folders that should be /excluded/ from dropbox. This obviates the need for the Dropbox applet in the system tray.
+
+#+begin_src bash :tangle void_setup.sh :results silent
+dropbox exclude add ~/Dropbox/Cloud_Storage
+
+dropbox exclude add ~/Dropbox/Texts_not_Synced
+dropbox exclude add ~/Dropbox/NoSync_Texts
+dropbox exclude add ~/Dropbox/0_Storage
+#+end_src
+
+* Cursor theme
+
+Void doesn’t have many cursor packages. Try the following command for a nice theme:
+
+#+begin_src shell
+curl https://raw.githubusercontent.com/mustafaozhan/Breeze-Adapta-Cursor/master/install.sh | bash
+#+end_src
+
+Taken from here: https://github.com/mustafaozhan/Breeze-Adapta-Cursor.
+
+* Xresources
+
+You can make EXWM/DWM (or any window manager) viewable by this. You might want to use different settings for laptop/desktop mode.
+
+Best for laptop screen: *144* (Xft.dpi); best for HDMI output: *126*.
+
+#+begin_src config :tangle ~/.Xresources
+Xft.dpi: 144
+Xcursor.theme: Breeze-Adapta-Cursor
+Xcursor.size: 24
+Xft.antialias: 1
+Xft.hinting: 1
+Xft.hintstyle: hintslight
+Xft.rgba: rgb
+#+end_src
+
+* Xprofile (autostart)
+
+#+begin_src config ~/.xprofile
+setxkbmap gb
+xmodmap ~/modmap
+emacs --daemon
+#+end_src
+
+* Keyboard
+
+You can change the keyboard setting with the command
+
+#+begin_src shell
+setxkbmap gb
+#+end_src
+
+* Cloning DWM
+
+#+begin_src shell
+git clone https://git.suckless.org/dwm
+cd dwm
+sudo make clean install
+#+end_src
+
+* DWM Config
+
+The gap-patched DWM file is here: [[/home/michael/Dropbox/Main_Config/Void_Setup/dwm.c]]
+
+Modified to include gaps.
+
+#+begin_src c :tangle ~/dwm-6.6/config.h
+/* See LICENSE file for copyright and license details. */
+
+/* appearance */
+static const unsigned int borderpx  = 1;        /* border pixel of windows */
+static const unsigned int gappx     = 10;        /* gap pixel between windows */
+static const unsigned int snap      = 32;       /* snap pixel */
+static const int showbar            = 1;        /* 0 means no bar */
+static const int topbar             = 1;        /* 0 means bottom bar */
+static const char *fonts[]          = { "monospace:size=13" };
+static const char dmenufont[]       = "monospace:size=10";
+static const char col_gray1[]       = "#222222";
+static const char col_gray2[]       = "#444444";
+static const char col_gray3[]       = "#bbbbbb";
+static const char col_gray4[]       = "#eeeeee";
+static const char col_cyan[]        = "#005577";
+static const char *colors[][3]      = {
+	/*               fg         bg         border   */
+	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
+	[SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
+};
+
+/* tagging */
+static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+
+static const Rule rules[] = {
+	/* xprop(1):
+	 *	WM_CLASS(STRING) = instance, class
+	 *	WM_NAME(STRING) = title
+	 */
+	/* class      instance    title       tags mask     isfloating   monitor */
+	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
+	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
+};
+
+/* layout(s) */
+static const float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
+static const int nmaster     = 1;    /* number of clients in master area */
+static const int resizehints = 1;    /* 1 means respect size hints in tiled resizals */
+static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
+
+static const Layout layouts[] = {
+	/* symbol     arrange function */
+	{ "[]=",      tile },    /* first entry is default */
+	{ "><>",      NULL },    /* no layout function means floating behavior */
+	{ "[M]",      monocle },
+};
+
+/* key definitions */
+#define MODKEY Mod4Mask
+#define TAGKEYS(KEY,TAG) \
+	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
+	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
+	{ MODKEY|ShiftMask,             KEY,      tag,            {.ui = 1 << TAG} }, \
+	{ MODKEY|ControlMask|ShiftMask, KEY,      toggletag,      {.ui = 1 << TAG} },
+
+/* helper for spawning shell commands in the pre dwm-5.0 fashion */
+#define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
+
+/* commands */
+static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
+static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+static const char *togglepad[] = { "/home/michael/scripts/tt.sh", NULL };
+static const char *termcmd[]  = { "alacritty", NULL };
+static const char *browsercmd[] = { "librewolf", NULL };
+static const char *emacsclientcmd[] = {
+    "emacsclient", "-c", NULL
+};
+
+static const Key keys[] = {
+	/* modifier                     key        function        argument */
+	{ MODKEY,                       XK_d,      spawn,          {.v = dmenucmd } },
+	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+	{ MODKEY,                       XK_b,      togglebar,      {0} },
+	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
+	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
+	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
+	{ MODKEY,                       XK_e,      spawn,          {.v = emacsclientcmd } },
+	{ MODKEY|ShiftMask,             XK_t,      spawn,          {.v = togglepad } },
+	{ MODKEY,                       XK_a,      incnmaster,     {.i = -1 } },
+	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
+	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
+	{ MODKEY,                       XK_Return, zoom,           {0} },
+	{ MODKEY,                       XK_Tab,    view,           {0} },
+	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
+	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
+	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
+	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+	{ MODKEY,                       XK_space,  setlayout,      {0} },
+	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
+	{ MODKEY,                       XK_w,      spawn,          {.v = browsercmd } },
+	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
+	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
+	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
+	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
+	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
+	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
+	
+	/* volume controls directly, no macros */
+	{ MODKEY, XK_Up,   spawn, SHCMD("pactl set-sink-volume @DEFAULT_SINK@ +5%") },
+	{ MODKEY, XK_Down, spawn, SHCMD("pactl set-sink-volume @DEFAULT_SINK@ -5%") },
+
+	TAGKEYS(                        XK_1,                      0)
+	TAGKEYS(                        XK_2,                      1)
+	TAGKEYS(                        XK_3,                      2)
+	TAGKEYS(                        XK_4,                      3)
+	TAGKEYS(                        XK_5,                      4)
+	TAGKEYS(                        XK_6,                      5)
+	TAGKEYS(                        XK_7,                      6)
+	TAGKEYS(                        XK_8,                      7)
+	TAGKEYS(                        XK_9,                      8)
+	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
+};
+
+/* button definitions */
+/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+static const Button buttons[] = {
+	/* click                event mask      button          function        argument */
+	{ ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
+	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
+	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
+	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
+	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
+	{ ClkClientWin,         MODKEY,         Button2,        togglefloating, {0} },
+	{ ClkClientWin,         MODKEY,         Button3,        resizemouse,    {0} },
+	{ ClkTagBar,            0,              Button1,        view,           {0} },
+	{ ClkTagBar,            0,              Button3,        toggleview,     {0} },
+	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
+	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
+};
+#+end_src
+
+* DWM .desktop
+
+#+begin_src config
+[Desktop Entry]
+Encoding=UTF-8
+Name=DWM
+Comment=Dynamic Window Manager
+Exec=dbus-launch --exit-with-session dwm
+Type=XSession
+#+end_src
+* EXWM .desktop
+
+#+begin_src config
+[Desktop Entry]
+Name=EXWM
+Comment=Emacs X Window Manager
+Exec=emacs --eval "(progn (require 'exwm) (exwm-enable))"
+TryExec=emacs
+Type=XSession
+#+end_src
+
+* Scripts
+** Toggle touchpad (Super+Shift+t)
+
+Simple script to toggle the touchpad:
+
+#+begin_src shell :tangle ~/scripts/tt.sh
+#!/bin/bash
+# toggle_touchpad.sh
+# Toggles the touchpad on/off using xinput
+
+# Replace this with your device ID or exact name
+DEVICE="10"  # or "SynPS/2 Synaptics TouchPad"
+
+# Get current enabled status (0 = disabled, 1 = enabled)
+STATUS=$(xinput list-props "$DEVICE" | awk '/Device Enabled/{print $4}')
+
+if [ "$STATUS" -eq 1 ]; then
+    xinput disable "$DEVICE"
+    echo "Touchpad disabled."
+else
+    xinput enable "$DEVICE"
+    echo "Touchpad enabled."
+fi
+#+end_src
+
+* Maintenance commands
+
+This removes all orphaned and obsolete packages from /var/cache/xbps:
+
+#+begin_src shell
+sudo xbps-remove -Oo
+#+end_src
